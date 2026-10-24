@@ -1,207 +1,254 @@
 <!DOCTYPE html><html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mayowa & Co. Owner Dashboard</title>
-  <style>
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      padding: 20px;
-      font-family: Arial, sans-serif;
-      background: #f4f6f8;
-      color: #222;
-    }
-    .container {
-      max-width: 430px;
-      margin: 40px auto;
-      background: white;
-      padding: 25px;
-      border-radius: 12px;
-      box-shadow: 0 4px 18px rgba(0,0,0,.08);
-    }
-    h1 { color: #173d2b; text-align: center; }
-    p { line-height: 1.5; }
-    input, button {
-      width: 100%;
-      padding: 13px;
-      margin-top: 12px;
-      border-radius: 6px;
-      font-size: 16px;
-    }
-    input { border: 1px solid #ccc; }
-    button {
-      border: none;
-      background: #173d2b;
-      color: white;
-      cursor: pointer;
-    }
-    button.secondary { background: #52645a; }
-    button:disabled { opacity: .6; }
-    #message {
-      margin-top: 15px;
-      overflow-wrap: anywhere;
-      font-size: 14px;
-    }
-    .hidden { display: none; }
-    .note { color: #555; font-size: 13px; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mayowa & Co. Owner Dashboard</title>
+<style>
+*{box-sizing:border-box}
+body{font-family:Arial,sans-serif;background:#f3f6f4;margin:0;padding:16px;color:#222}
+.container{max-width:700px;margin:25px auto;background:white;padding:22px;border-radius:12px;box-shadow:0 3px 15px #0001}
+h1,h2{color:#17452e}
+input,textarea,select,button{width:100%;padding:12px;margin:7px 0;border:1px solid #ccc;border-radius:6px;font-size:16px}
+button{background:#17452e;color:white;border:0;cursor:pointer}
+button.secondary{background:#5b6d61}
+button.delete{background:#a12626}
+.property{border:1px solid #ddd;border-radius:8px;padding:14px;margin:12px 0}
+.property img{width:100%;max-height:240px;object-fit:cover;border-radius:6px}
+.hidden{display:none}
+#message{overflow-wrap:anywhere;font-size:14px}
+</style>
 </head>
 <body>
-  <main class="container">
-    <h1>Mayowa & Co.</h1>
-    <p style="text-align:center">Owner Dashboard</p><section id="authSection">
-  <h2 id="formTitle">Sign In</h2>
-  <p>Sign in or create an account to access your property dashboard.</p>
-
-  <form id="authForm">
-    <input id="email" type="email" placeholder="Email address" autocomplete="email" required>
-    <input id="password" type="password" placeholder="Password (at least 6 characters)" autocomplete="current-password" minlength="6" required>
-    <button id="submitButton" type="submit">Sign In</button>
-  </form>
-
-  <button class="secondary" id="toggleButton" type="button">Create New Account</button>
-  <button class="secondary" id="resetButton" type="button">Forgot Password?</button>
+<main class="container">
+<h1>Mayowa & Co.</h1>
+<p>Owner Dashboard — Manage Your Properties</p><section id="auth">
+<h2 id="authTitle">Sign In</h2>
+<form id="authForm">
+<input id="email" type="email" placeholder="Email address" required>
+<input id="password" type="password" placeholder="Password (at least 6 characters)" minlength="6" required>
+<button id="authSubmit">Sign In</button>
+</form>
+<button class="secondary" id="toggleAuth" type="button">Create New Account</button>
+<button class="secondary" id="resetPassword" type="button">Forgot Password?</button>
+</section><section id="dashboard" class="hidden">
+<p id="signedInAs"></p>
+<button class="secondary" id="logout" type="button">Sign Out</button><h2>Add a Property</h2>
+<form id="propertyForm">
+<input id="title" placeholder="Property title" required>
+<select id="type" required>
+<option value="">Choose property type</option>
+<option>Apartment</option>
+<option>Flat</option>
+<option>House</option>
+<option>Duplex</option>
+<option>Land</option>
+<option>Warehouse</option>
+<option>Shop</option>
+<option>Office</option>
+<option>Other</option>
+</select>
+<input id="location" placeholder="Property location (e.g. Mushin, Lagos)" required>
+<input id="price" type="number" min="0" placeholder="Price in naira" required>
+<select id="purpose" required>
+<option value="">For sale or rent?</option>
+<option>For Sale</option>
+<option>For Rent</option>
+<option>Short Let</option>
+</select>
+<textarea id="description" placeholder="Property description" rows="4"></textarea>
+<input id="imageUrl" type="url" placeholder="Property image URL (optional)">
+<button id="addProperty" type="submit">Add Property</button>
+</form><h2>My Properties</h2>
+<div id="properties">Loading properties...</div>
 </section>
-
-<section id="dashboardSection" class="hidden">
-  <h2>Welcome!</h2>
-  <p id="userEmail"></p>
-  <p>Your account is connected. Property management still needs to be connected to your property data.</p>
-  <button id="logoutButton" type="button">Sign Out</button>
-</section>
-
 <p id="message" role="status" aria-live="polite"></p>
-<p class="note">Mayowa & Co. Real Estate</p>
+</main><script type="module">
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
-  </main>  <script type="module">
-    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+const SUPABASE_URL = "https://pvvsgzaruibqvcskejhc.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_lixabtxRJWc_l4e9bXf01w_iSIDTwVg";
+const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
-    const SUPABASE_URL = "https://pvvsgzaruibqvcskejhc.supabase.co";
-    const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_lixabtxRJWc_l4e9bXf01w_iSIDTwVg";
+const $ = id => document.getElementById(id);
+let isSignUp = false;
+let currentUser = null;
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+function message(text, error=false) {
+  $("message").textContent = text;
+  $("message").style.color = error ? "#b00020" : "#17452e";
+}
 
-    const authSection = document.getElementById("authSection");
-    const dashboardSection = document.getElementById("dashboardSection");
-    const authForm = document.getElementById("authForm");
-    const emailInput = document.getElementById("email");
-    const passwordInput = document.getElementById("password");
-    const formTitle = document.getElementById("formTitle");
-    const submitButton = document.getElementById("submitButton");
-    const toggleButton = document.getElementById("toggleButton");
-    const resetButton = document.getElementById("resetButton");
-    const logoutButton = document.getElementById("logoutButton");
-    const message = document.getElementById("message");
-    const userEmail = document.getElementById("userEmail");
+function escapeHTML(value) {
+  return String(value ?? "").replace(/[&<>"']/g, c => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+  }[c]));
+}
 
-    let isSignUp = false;
+function showDashboard(user) {
+  currentUser = user;
+  $("auth").classList.add("hidden");
+  $("dashboard").classList.remove("hidden");
+  $("signedInAs").textContent = "Signed in as " + user.email;
+  loadProperties();
+}
 
-    function showMessage(text, isError = false) {
-      message.textContent = text;
-      message.style.color = isError ? "#b00020" : "#173d2b";
+function showAuth() {
+  currentUser = null;
+  $("dashboard").classList.add("hidden");
+  $("auth").classList.remove("hidden");
+}
+
+$("toggleAuth").addEventListener("click", () => {
+  isSignUp = !isSignUp;
+  $("authTitle").textContent = isSignUp ? "Create Account" : "Sign In";
+  $("authSubmit").textContent = isSignUp ? "Create Account" : "Sign In";
+  $("toggleAuth").textContent = isSignUp ? "Back to Sign In" : "Create New Account";
+  message("");
+});
+
+$("authForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  $("authSubmit").disabled = true;
+  message("Please wait...");
+
+  const email = $("email").value.trim();
+  const password = $("password").value;
+
+  try {
+    if (isSignUp) {
+      const {data,error} = await supabase.auth.signUp({
+        email,password,
+        options:{emailRedirectTo:window.location.origin}
+      });
+      if(error) throw error;
+      if(data.session && data.user) {
+        showDashboard(data.user);
+        message("Account created successfully.");
+      } else {
+        message("Account created. Check your email to confirm it, then sign in.");
+      }
+    } else {
+      const {data,error} = await supabase.auth.signInWithPassword({email,password});
+      if(error) throw error;
+      showDashboard(data.user);
+      message("Signed in successfully.");
+    }
+  } catch(error) {
+    message(error.message || "Authentication failed.",true);
+  } finally {
+    $("authSubmit").disabled = false;
+  }
+});
+
+$("resetPassword").addEventListener("click", async () => {
+  const email = $("email").value.trim();
+  if(!email) return message("Enter your email address first.",true);
+
+  const {error} = await supabase.auth.resetPasswordForEmail(email,{
+    redirectTo:window.location.origin
+  });
+  message(error ? error.message : "If the account exists, a password reset email will be sent.",!!error);
+});
+
+$("logout").addEventListener("click", async () => {
+  const {error} = await supabase.auth.signOut();
+  if(error) return message(error.message,true);
+  showAuth();
+  message("Signed out.");
+});
+
+$("propertyForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  if(!currentUser) return message("Please sign in first.",true);
+
+  $("addProperty").disabled = true;
+  message("Saving property...");
+
+  const property = {
+    owner_id: currentUser.id,
+    title: $("title").value.trim(),
+    property_type: $("type").value,
+    location: $("location").value.trim(),
+    price: Number($("price").value),
+    listing_purpose: $("purpose").value,
+    description: $("description").value.trim() || null,
+    image_url: $("imageUrl").value.trim() || null,
+    status: "pending"
+  };
+
+  try {
+    const {error} = await supabase.from("properties").insert(property);
+    if(error) throw error;
+    $("propertyForm").reset();
+    message("Property saved! It is marked pending and is not automatically published on your public website.");
+    await loadProperties();
+  } catch(error) {
+    message("Could not save property: " + error.message,true);
+  } finally {
+    $("addProperty").disabled = false;
+  }
+});
+
+async function loadProperties() {
+  if(!currentUser) return;
+
+  $("properties").textContent = "Loading properties...";
+
+  try {
+    const {data,error} = await supabase
+      .from("properties")
+      .select("*")
+      .eq("owner_id",currentUser.id)
+      .order("created_at",{ascending:false});
+
+    if(error) throw error;
+
+    if(!data.length) {
+      $("properties").textContent = "You have not added any properties yet.";
+      return;
     }
 
-    function showDashboard(user) {
-      authSection.classList.add("hidden");
-      dashboardSection.classList.remove("hidden");
-      userEmail.textContent = "Signed in as: " + user.email;
-    }
+    $("properties").innerHTML = data.map(p => `
+      <article class="property">
+        ${p.image_url ? `<img src="${escapeHTML(p.image_url)}" alt="Property image" loading="lazy" onerror="this.style.display='none'">` : ""}
+        <h3>${escapeHTML(p.title)}</h3>
+        <p><strong>Type:</strong> ${escapeHTML(p.property_type)}</p>
+        <p><strong>Location:</strong> ${escapeHTML(p.location)}</p>
+        <p><strong>Price:</strong> ₦${Number(p.price).toLocaleString("en-NG")}</p>
+        <p><strong>Purpose:</strong> ${escapeHTML(p.listing_purpose)}</p>
+        <p>${escapeHTML(p.description)}</p>
+        <p><strong>Status:</strong> ${escapeHTML(p.status)}</p>
+        <button class="delete" data-delete="${Number(p.id)}" type="button">Delete Property</button>
+      </article>
+    `).join("");
 
-    function showAuth() {
-      dashboardSection.classList.add("hidden");
-      authSection.classList.remove("hidden");
-    }
+    $("properties").querySelectorAll("[data-delete]").forEach(button => {
+      button.addEventListener("click", async () => {
+        if(!confirm("Are you sure you want to delete this property?")) return;
 
-    toggleButton.addEventListener("click", () => {
-      isSignUp = !isSignUp;
-      formTitle.textContent = isSignUp ? "Create Account" : "Sign In";
-      submitButton.textContent = isSignUp ? "Create Account" : "Sign In";
-      toggleButton.textContent = isSignUp ? "Back to Sign In" : "Create New Account";
-      passwordInput.autocomplete = isSignUp ? "new-password" : "current-password";
-      showMessage("");
+        const id = Number(button.dataset.delete);
+        const {error} = await supabase.from("properties")
+          .delete()
+          .eq("id",id)
+          .eq("owner_id",currentUser.id);
+
+        if(error) return message("Could not delete property: " + error.message,true);
+        message("Property deleted.");
+        loadProperties();
+      });
     });
+  } catch(error) {
+    $("properties").textContent = "Could not load properties.";
+    message("Database error: " + error.message,true);
+  }
+}
 
-    authForm.addEventListener("submit", async (event) => {
-      event.preventDefault();
-      submitButton.disabled = true;
-      showMessage("Please wait...");
+const {data:{session}} = await supabase.auth.getSession();
+if(session?.user) showDashboard(session.user);
 
-      const email = emailInput.value.trim();
-      const password = passwordInput.value;
-
-      try {
-        if (isSignUp) {
-          const { data, error } = await supabase.auth.signUp({
-            email,
-            password,
-            options: {
-              emailRedirectTo: window.location.origin
-            }
-          });
-
-          if (error) throw error;
-
-          if (data.session && data.user) {
-            showDashboard(data.user);
-            showMessage("Account created successfully.");
-          } else {
-            showMessage("Account created. Check your email to confirm your account, then sign in.");
-          }
-        } else {
-          const { data, error } = await supabase.auth.signInWithPassword({
-            email,
-            password
-          });
-
-          if (error) throw error;
-
-          showDashboard(data.user);
-          showMessage("Signed in successfully.");
-        }
-      } catch (error) {
-        showMessage(error.message || "Something went wrong. Please try again.", true);
-      } finally {
-        submitButton.disabled = false;
-      }
-    });
-
-    resetButton.addEventListener("click", async () => {
-      const email = emailInput.value.trim();
-
-      if (!email) {
-        showMessage("Enter your email address first, then tap Forgot Password.", true);
-        return;
-      }
-
-      try {
-        const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: window.location.origin
-        });
-
-        if (error) throw error;
-        showMessage("If an account exists for this email, a password reset message will be sent.");
-      } catch (error) {
-        showMessage(error.message || "Could not send the reset email.", true);
-      }
-    });
-
-    logoutButton.addEventListener("click", async () => {
-      const { error } = await supabase.auth.signOut();
-
-      if (error) {
-        showMessage(error.message, true);
-        return;
-      }
-
-      showAuth();
-      showMessage("You have signed out.");
-    });
-
-    const { data: { session } } = await supabase.auth.getSession();
-
-    if (session?.user) {
-      showDashboard(session.user);
-    }
-  </script></body>
+supabase.auth.onAuthStateChange((_event,session) => {
+  if(session?.user) showDashboard(session.user);
+  else showAuth();
+});
+</script></body>
 </html>
