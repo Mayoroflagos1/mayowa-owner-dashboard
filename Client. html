@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Find Your Property | Mayowa & Co.</title>
+
+<style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #f5f7f5;
+  color: #222;
+}
+
+header {
+  background: #163c32;
+  color: white;
+  padding: 22px 15px;
+  text-align: center;
+}
+
+header h1 {
+  margin: 0 0 8px;
+}
+
+header p {
+  margin: 0;
+}
+
+.hero {
+  background: #e4eee8;
+  text-align: center;
+  padding: 35px 15px;
+}
+
+.hero h2 {
+  color: #163c32;
+  font-size: 28px;
+  margin-top: 0;
+}
+
+.hero p {
+  line-height: 1.6;
+}
+
+.search-area {
+  max-width: 900px;
+  margin: 20px auto;
+  padding: 0 15px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.search-area input,
+.search-area select {
+  flex: 1;
+  min-width: 150px;
+  padding: 13px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  background: white;
+  font-size: 15px;
+}
+
+.section {
+  max-width: 1200px;
+  margin: auto;
+  padding: 15px;
+}
+
+.section h2 {
+  color: #163c32;
+}
+
+#message {
+  text-align: center;
+  padding: 20px;
+  color: #555;
+}
+
+.properties {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px;
+}
+
+.card {
+  background: white;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 3px 12px #00000012;
+}
+
+.card img {
+  width: 100%;
+  height: 210px;
+  object-fit: cover;
+  background: #ddd;
+  display: block;
+}
+
+.details {
+  padding: 16px;
+}
+
+.details h3 {
+  color: #163c32;
+  font-size: 20px;
+  margin: 12px 0;
+}
+
+.tag {
+  background: #e4f1e9;
+  color: #163c32;
+  border-radius: 5px;
+  padding: 6px 9px;
+  font-size: 12px;
+}
+
+.location {
+  color: #555;
+}
+
+.price {
+  color: #167447;
+  font-size: 19px;
+  font-weight: bold;
+}
+
+.description {
+  color: #555;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.button {
+  display: block;
+  background: #163c32;
+  color: white;
+  text-decoration: none;
+  padding: 12px;
+  text-align: center;
+  border-radius: 5px;
+  margin-top: 12px;
+}
+
+.button:hover {
+  background: #245847;
+}
+
+.contact-section {
+  background: #163c32;
+  color: white;
+  text-align: center;
+  padding: 30px 15px;
+  margin-top: 35px;
+}
+
+.contact-section a {
+  display: inline-block;
+  background: white;
+  color: #163c32;
+  padding: 12px 20px;
+  border-radius: 5px;
+  text-decoration: none;
+  margin-top: 10px;
+  font-weight: bold;
+}
+
+footer {
+  text-align: center;
+  background: #102b24;
+  color: white;
+  padding: 18px;
+  font-size: 13px;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <h1>Mayowa &amp; Co.</h1>
+  <p>Your Property, Our Priority</p>
+</header>
+
+<section class="hero">
+  <h2>Find Your Perfect Property</h2>
+  <p>Explore available properties for sale and rent with Mayowa &amp; Co.</p>
+</section>
+
+<div class="search-area">
+  <input
+    type="search"
+    id="search"
+    placeholder="Search by title or location..."
+    aria-label="Search properties"
+  >
+
+  <select id="purpose" aria-label="Filter by listing purpose">
+    <option value="">All Listings</option>
+    <option value="sale">For Sale</option>
+    <option value="rent">For Rent</option>
+    <option value="short let">Short Let</option>
+  </select>
+
+  <select id="type" aria-label="Filter by property type">
+    <option value="">All Property Types</option>
+  </select>
+</div>
+
+<section class="section">
+  <h2>Available Properties</h2>
+  <p>Browse our currently approved listings.</p>
+
+  <div id="message">Loading properties...</div>
+  <div id="properties" class="properties"></div>
+</section>
+
+<section class="contact-section">
+  <h2>Need Help Finding a Property?</h2>
+  <p>Contact Mayowa &amp; Co. for assistance.</p>
+  <a href="https://wa.me/mayowa.co" target="_blank" rel="noopener noreferrer">
+    Contact Us on WhatsApp
+  </a>
+</section>
+
+<footer>
+  &copy; 2026 Mayowa &amp; Co. All rights reserved.
+</footer>
+
+<script>
+const SUPABASE_URL =
+  "https://pvvsgzaruibqvcskejhc.supabase.co";
+
+const SUPABASE_KEY =
+  "sb_publishable_lixabtxRJWc_l4e9bXf01w_iSIDTwVg";
+
+let allProperties = [];
+
+async function loadProperties() {
+  const message = document.getElementById("message");
+
+  try {
+    const response = await fetch(
+      SUPABASE_URL +
+      "/rest/v1/properties?select=id,title,property_type,location,price,description,image_url,listing_purpose,created_at&status=eq.approved&order=created_at.desc",
+      {
+        headers: {
+          "apikey": SUPABASE_KEY,
+          "Authorization": "Bearer " + SUPABASE_KEY
+        }
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Unable to retrieve properties.");
+    }
+
+    allProperties = await response.json();
+
+    const types = [...new Set(
+      allProperties
+        .map(p => p.property_type)
+        .filter(Boolean)
+    )];
+
+    const typeSelect = document.getElementById("type");
+
+    types.forEach(type => {
+      const option = document.createElement("option");
+      option.value = type.toLowerCase();
+      option.textContent = type;
+      typeSelect.appendChild(option);
+    });
+
+    renderProperties();
+
+  } catch (error) {
+    console.error(error);
+    message.textContent =
+      "We couldn't load the properties. Please try again later.";
+  }
+}
+
+function renderProperties() {
+  const container = document.getElementById("properties");
+  const message = document.getElementById("message");
+
+  container.replaceChildren();
+
+  const search = document.getElementById("search")
+    .value.trim().toLowerCase();
+
+  const purpose = document.getElementById("purpose")
+    .value.toLowerCase();
+
+  const type = document.getElementById("type")
+    .value.toLowerCase();
+
+  const filtered = allProperties.filter(property => {
+    const searchableText = [
+      property.title,
+      property.location,
+      property.property_type,
+      property.description
+    ].filter(Boolean).join(" ").toLowerCase();
+
+    const propertyPurpose =
+      (property.listing_purpose || "").toLowerCase();
+
+    const propertyType =
+      (property.property_type || "").toLowerCase();
+
+    return searchableText.includes(search) &&
+      (!purpose || propertyPurpose === purpose) &&
+      (!type || propertyType === type);
+  });
+
+  if (filtered.length === 0) {
+    message.textContent = allProperties.length === 0
+      ? "No properties are available yet. Please check again soon."
+      : "No properties match your search. Try different filters.";
+    return;
+  }
+
+  message.textContent = filtered.length + " propert" +
+    (filtered.length === 1 ? "y found." : "ies found.");
+
+  filtered.forEach(property => {
+    const card = document.createElement("article");
+    card.className = "card";
+
+    if (property.image_url) {
+      const img = document.createElement("img");
+      img.src = property.image_url;
+      img.alt = property.title || "Property image";
+      img.loading = "lazy";
+
+      img.onerror = () => img.style.display = "none";
+
+      card.appendChild(img);
+    }
+
+    const details = document.createElement("div");
+    details.className = "details";
+
+    const tag = document.createElement("span");
+    tag.className = "tag";
+    tag.textContent = [
+      property.listing_purpose,
+      property.property_type
+    ].filter(Boolean).join(" | ") || "Property";
+
+    const title = document.createElement("h3");
+    title.textContent = property.title || "Property listing";
+
+    const location = document.createElement("p");
+    location.className = "location";
+    location.textContent =
+      "Location: " + (property.location || "Contact us");
+
+    const price = document.createElement("p");
+    price.className = "price";
+    price.textContent = property.price == null
+      ? "Price on request"
+      : "₦" + Number(property.price).toLocaleString("en-NG");
+
+    const description = document.createElement("p");
+    description.className = "description";
+    description.textContent = property.description || "";
+
+    const contact = document.createElement("a");
+    contact.className = "button";
+    contact.href = "https://wa.me/mayowa.co";
+    contact.target = "_blank";
+    contact.rel = "noopener noreferrer";
+    contact.textContent = "Enquire About This Property";
+
+    details.append(tag, title, location, price, description, contact);
+    card.appendChild(details);
+    container.appendChild(card);
+  });
+}
+
+document.getElementById("search")
+  .addEventListener("input", renderProperties);
+
+document.getElementById("purpose")
+  .addEventListener("change", renderProperties);
+
+document.getElementById("type")
+  .addEventListener("change", renderProperties);
+
+loadProperties();
+</script>
+
+</body>
+</html>
