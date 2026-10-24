@@ -1,159 +1,207 @@
-<!DOCTYPE html>
-<html lang="en">
+<!DOCTYPE html><html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Mayowa & Co. | Owner Dashboard</title>
-
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
-
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mayowa & Co. Owner Dashboard</title>
   <style>
     * { box-sizing: border-box; }
-
     body {
       margin: 0;
+      padding: 20px;
       font-family: Arial, sans-serif;
-      background: #f4f7f4;
+      background: #f4f6f8;
       color: #222;
     }
-
-    header {
-      background: #14532d;
-      color: white;
-      padding: 24px 16px;
-      text-align: center;
-    }
-
-    header h1 { margin: 0 0 8px; }
-
-    main {
-      max-width: 600px;
-      margin: 35px auto;
-      padding: 0 16px;
-    }
-
-    .card {
+    .container {
+      max-width: 430px;
+      margin: 40px auto;
       background: white;
-      padding: 28px 20px;
+      padding: 25px;
       border-radius: 12px;
-      box-shadow: 0 3px 14px #0000000d;
-      text-align: center;
+      box-shadow: 0 4px 18px rgba(0,0,0,.08);
     }
-
-    .status {
-      padding: 12px;
-      margin-top: 20px;
-      border-radius: 8px;
-      background: #fef3c7;
-      color: #92400e;
-      line-height: 1.5;
+    h1 { color: #173d2b; text-align: center; }
+    p { line-height: 1.5; }
+    input, button {
+      width: 100%;
+      padding: 13px;
+      margin-top: 12px;
+      border-radius: 6px;
+      font-size: 16px;
+    }
+    input { border: 1px solid #ccc; }
+    button {
+      border: none;
+      background: #173d2b;
+      color: white;
+      cursor: pointer;
+    }
+    button.secondary { background: #52645a; }
+    button:disabled { opacity: .6; }
+    #message {
+      margin-top: 15px;
       overflow-wrap: anywhere;
+      font-size: 14px;
     }
-
-    #googleButton {
-      display: flex;
-      justify-content: center;
-      margin: 24px 0;
-    }
-
-    .small {
-      font-size: 13px;
-      color: #666;
-      line-height: 1.6;
-    }
-
-    footer {
-      text-align: center;
-      padding: 20px;
-      font-size: 13px;
-      color: #666;
-    }
+    .hidden { display: none; }
+    .note { color: #555; font-size: 13px; }
   </style>
 </head>
-
 <body>
-  <header>
-    <h1>Mayowa &amp; Co.</h1>
-    <div>Property Owner Dashboard</div>
-  </header>
+  <main class="container">
+    <h1>Mayowa & Co.</h1>
+    <p style="text-align:center">Owner Dashboard</p><section id="authSection">
+  <h2 id="formTitle">Sign In</h2>
+  <p>Sign in or create an account to access your property dashboard.</p>
 
-  <main>
-    <section class="card">
-      <h2>Manage Your Properties</h2>
-      <p>Sign in with Google to begin accessing your owner dashboard.</p>
+  <form id="authForm">
+    <input id="email" type="email" placeholder="Email address" autocomplete="email" required>
+    <input id="password" type="password" placeholder="Password (at least 6 characters)" autocomplete="current-password" minlength="6" required>
+    <button id="submitButton" type="submit">Sign In</button>
+  </form>
 
-      <div id="googleButton"></div>
+  <button class="secondary" id="toggleButton" type="button">Create New Account</button>
+  <button class="secondary" id="resetButton" type="button">Forgot Password?</button>
+</section>
 
-      <div id="status" class="status" role="status">
-        Loading Google sign-in…
-      </div>
+<section id="dashboardSection" class="hidden">
+  <h2>Welcome!</h2>
+  <p id="userEmail"></p>
+  <p>Your account is connected. Property management still needs to be connected to your property data.</p>
+  <button id="logoutButton" type="button">Sign Out</button>
+</section>
 
-      <p class="small">
-        Your account must be verified before any property information
-        can be accessed or changed.
-      </p>
-    </section>
-  </main>
+<p id="message" role="status" aria-live="polite"></p>
+<p class="note">Mayowa & Co. Real Estate</p>
 
-  <footer>
-    &copy; <span id="year"></span> Mayowa &amp; Co.
-  </footer>
+  </main>  <script type="module">
+    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
-  <script>
-    const GOOGLE_CLIENT_ID =
-      "205292905246-imt2dkqlitd5iurh0jno456147cvhps1.apps.googleusercontent.com";
+    const SUPABASE_URL = "https://pvvsgzaruibqvcskejhc.supabase.co";
+    const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_lixabtxRJWc_l4e9bXf01w_iSIDTwVg";
 
-    const statusBox = document.getElementById("status");
+    const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
-    document.getElementById("year").textContent =
-      new Date().getFullYear();
+    const authSection = document.getElementById("authSection");
+    const dashboardSection = document.getElementById("dashboardSection");
+    const authForm = document.getElementById("authForm");
+    const emailInput = document.getElementById("email");
+    const passwordInput = document.getElementById("password");
+    const formTitle = document.getElementById("formTitle");
+    const submitButton = document.getElementById("submitButton");
+    const toggleButton = document.getElementById("toggleButton");
+    const resetButton = document.getElementById("resetButton");
+    const logoutButton = document.getElementById("logoutButton");
+    const message = document.getElementById("message");
+    const userEmail = document.getElementById("userEmail");
 
-    function showStatus(message) {
-      statusBox.textContent = message;
+    let isSignUp = false;
+
+    function showMessage(text, isError = false) {
+      message.textContent = text;
+      message.style.color = isError ? "#b00020" : "#173d2b";
     }
 
-    function handleGoogleCredential(response) {
-      // Do not save or trust the identity from the browser alone.
-      // A server must verify this token before granting access.
-      showStatus(
-        "Google returned a sign-in token. Secure server verification " +
-        "and owner authorization must be connected before your properties " +
-        "can be displayed or changed."
-      );
-
-      // Do not log or store the credential.
+    function showDashboard(user) {
+      authSection.classList.add("hidden");
+      dashboardSection.classList.remove("hidden");
+      userEmail.textContent = "Signed in as: " + user.email;
     }
 
-    window.addEventListener("load", function () {
-      if (!window.google || !google.accounts || !google.accounts.id) {
-        showStatus(
-          "Google sign-in could not load. Check your internet connection " +
-          "and reload this page."
-        );
+    function showAuth() {
+      dashboardSection.classList.add("hidden");
+      authSection.classList.remove("hidden");
+    }
+
+    toggleButton.addEventListener("click", () => {
+      isSignUp = !isSignUp;
+      formTitle.textContent = isSignUp ? "Create Account" : "Sign In";
+      submitButton.textContent = isSignUp ? "Create Account" : "Sign In";
+      toggleButton.textContent = isSignUp ? "Back to Sign In" : "Create New Account";
+      passwordInput.autocomplete = isSignUp ? "new-password" : "current-password";
+      showMessage("");
+    });
+
+    authForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      submitButton.disabled = true;
+      showMessage("Please wait...");
+
+      const email = emailInput.value.trim();
+      const password = passwordInput.value;
+
+      try {
+        if (isSignUp) {
+          const { data, error } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+              emailRedirectTo: window.location.origin
+            }
+          });
+
+          if (error) throw error;
+
+          if (data.session && data.user) {
+            showDashboard(data.user);
+            showMessage("Account created successfully.");
+          } else {
+            showMessage("Account created. Check your email to confirm your account, then sign in.");
+          }
+        } else {
+          const { data, error } = await supabase.auth.signInWithPassword({
+            email,
+            password
+          });
+
+          if (error) throw error;
+
+          showDashboard(data.user);
+          showMessage("Signed in successfully.");
+        }
+      } catch (error) {
+        showMessage(error.message || "Something went wrong. Please try again.", true);
+      } finally {
+        submitButton.disabled = false;
+      }
+    });
+
+    resetButton.addEventListener("click", async () => {
+      const email = emailInput.value.trim();
+
+      if (!email) {
+        showMessage("Enter your email address first, then tap Forgot Password.", true);
         return;
       }
 
-      google.accounts.id.initialize({
-        client_id: GOOGLE_CLIENT_ID,
-        callback: handleGoogleCredential
-      });
+      try {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: window.location.origin
+        });
 
-      google.accounts.id.renderButton(
-        document.getElementById("googleButton"),
-        {
-          theme: "outline",
-          size: "large",
-          shape: "rectangular",
-          text: "signin_with",
-          width: 260
-        }
-      );
-
-      showStatus(
-        "Google sign-in is ready. Property access remains disabled " +
-        "until server-side verification is connected."
-      );
+        if (error) throw error;
+        showMessage("If an account exists for this email, a password reset message will be sent.");
+      } catch (error) {
+        showMessage(error.message || "Could not send the reset email.", true);
+      }
     });
-  </script>
-</body>
+
+    logoutButton.addEventListener("click", async () => {
+      const { error } = await supabase.auth.signOut();
+
+      if (error) {
+        showMessage(error.message, true);
+        return;
+      }
+
+      showAuth();
+      showMessage("You have signed out.");
+    });
+
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (session?.user) {
+      showDashboard(session.user);
+    }
+  </script></body>
 </html>
