@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Properties | Mayowa & Co.</title>
+
+  <title>Available Properties | Mayowa & Co.</title>
 
   <style>
     * {
@@ -12,49 +13,58 @@
 
     body {
       margin: 0;
-      padding: 20px;
       font-family: Arial, sans-serif;
-      background: #f5f5f5;
+      background: #f5f7f5;
       color: #222;
     }
 
-    h1 {
+    header {
+      background: #163c32;
+      color: white;
       text-align: center;
-      color: #163c32;
-      margin-bottom: 8px;
+      padding: 28px 15px;
     }
 
-    .subtitle {
-      text-align: center;
-      color: #666;
-      margin-bottom: 25px;
+    header h1 {
+      margin: 0 0 10px;
+      font-size: 28px;
+    }
+
+    header p {
+      margin: 0;
+    }
+
+    main {
+      max-width: 1200px;
+      margin: auto;
+      padding: 25px 15px;
     }
 
     #message {
       text-align: center;
-      padding: 20px;
+      padding: 25px 10px;
+      color: #555;
     }
 
     .properties {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
       gap: 20px;
-      max-width: 1200px;
-      margin: auto;
     }
 
     .card {
       background: white;
       border-radius: 10px;
       overflow: hidden;
-      box-shadow: 0 2px 8px #00000012;
+      box-shadow: 0 3px 12px #00000012;
     }
 
     .card img {
+      display: block;
       width: 100%;
       height: 210px;
       object-fit: cover;
-      background: #ddd;
+      background: #e5e5e5;
     }
 
     .details {
@@ -62,51 +72,73 @@
     }
 
     .details h2 {
-      margin: 0 0 10px;
-      font-size: 19px;
       color: #163c32;
-    }
-
-    .price {
-      color: #167447;
-      font-weight: bold;
-      font-size: 18px;
+      font-size: 20px;
+      margin: 8px 0;
     }
 
     .tag {
       display: inline-block;
       background: #e4f1e9;
       color: #163c32;
-      padding: 5px 9px;
+      padding: 6px 9px;
       border-radius: 5px;
       font-size: 12px;
-      margin-bottom: 10px;
+    }
+
+    .price {
+      font-size: 19px;
+      font-weight: bold;
+      color: #167447;
     }
 
     .description {
       line-height: 1.5;
       color: #555;
+      overflow-wrap: anywhere;
     }
 
     .contact {
       display: inline-block;
       background: #163c32;
       color: white;
-      padding: 11px 15px;
-      border-radius: 5px;
       text-decoration: none;
-      margin-top: 10px;
+      padding: 12px 15px;
+      border-radius: 5px;
+      margin-top: 8px;
+    }
+
+    .contact:hover {
+      background: #245847;
+    }
+
+    footer {
+      text-align: center;
+      padding: 22px;
+      color: #666;
+      font-size: 14px;
     }
   </style>
 </head>
 
 <body>
 
-  <h1>Available Properties</h1>
-  <p class="subtitle">Find your next property with Mayowa & Co.</p>
+  <header>
+    <h1>Mayowa &amp; Co.</h1>
+    <p>Find Your Perfect Property</p>
+  </header>
 
-  <div id="message">Loading properties...</div>
-  <div class="properties" id="properties"></div>
+  <main>
+    <h2>Available Properties</h2>
+    <p>Explore properties approved by our team.</p>
+
+    <div id="message">Loading available properties...</div>
+    <div class="properties" id="properties"></div>
+  </main>
+
+  <footer>
+    &copy; 2026 Mayowa &amp; Co. All rights reserved.
+  </footer>
 
   <script>
     const SUPABASE_URL =
@@ -121,63 +153,73 @@
 
       try {
         const response = await fetch(
-          `${SUPABASE_URL}/rest/v1/properties?select=id,title,property_type,location,price,description,image_url,listing_purpose,created_at&status=eq.approved&order=created_at.desc`,
+          SUPABASE_URL +
+          "/rest/v1/properties?select=id,title,property_type,location,price,description,image_url,listing_purpose,created_at&status=eq.approved&order=created_at.desc",
           {
             headers: {
               "apikey": SUPABASE_KEY,
-              "Authorization": `Bearer ${SUPABASE_KEY}`
+              "Authorization": "Bearer " + SUPABASE_KEY
             }
           }
         );
 
         if (!response.ok) {
-          throw new Error("Could not load properties.");
+          throw new Error("Database request failed: " + response.status);
         }
 
         const properties = await response.json();
 
         message.textContent = "";
 
-        if (properties.length === 0) {
+        if (!properties.length) {
           message.textContent =
-            "No properties are available right now. Please check again soon.";
+            "No properties are available at the moment. Please check again soon.";
           return;
         }
 
-        properties.forEach(property => {
+        properties.forEach(function(property) {
           const card = document.createElement("article");
           card.className = "card";
 
-          const image = document.createElement("img");
-          image.src = property.image_url || "";
-          image.alt = property.title || "Property";
-          image.loading = "lazy";
+          if (property.image_url) {
+            const img = document.createElement("img");
+            img.src = property.image_url;
+            img.alt = property.title || "Property image";
+            img.loading = "lazy";
 
-          image.onerror = () => {
-            image.style.display = "none";
-          };
+            img.onerror = function() {
+              img.style.display = "none";
+            };
+
+            card.appendChild(img);
+          }
 
           const details = document.createElement("div");
           details.className = "details";
-
-          const title = document.createElement("h2");
-          title.textContent = property.title || "Property";
 
           const tag = document.createElement("span");
           tag.className = "tag";
           tag.textContent = [
             property.listing_purpose,
             property.property_type
-          ].filter(Boolean).join(" • ") || "Property";
+          ].filter(Boolean).join(" | ") || "Property";
+
+          const title = document.createElement("h2");
+          title.textContent = property.title || "Property listing";
 
           const location = document.createElement("p");
-          location.textContent = "Location: " + (property.location || "Contact us");
+          location.textContent =
+            "Location: " + (property.location || "Contact us for details");
 
           const price = document.createElement("p");
           price.className = "price";
-          price.textContent = property.price == null
-            ? "Price on request"
-            : "₦" + Number(property.price).toLocaleString("en-NG");
+
+          if (property.price !== null && property.price !== undefined) {
+            price.textContent =
+              "₦" + Number(property.price).toLocaleString("en-NG");
+          } else {
+            price.textContent = "Price on request";
+          }
 
           const description = document.createElement("p");
           description.className = "description";
@@ -187,26 +229,24 @@
           contact.className = "contact";
           contact.href = "https://wa.me/mayowa.co";
           contact.target = "_blank";
-          contact.rel = "noopener";
-          contact.textContent = "Enquire on WhatsApp";
+          contact.rel = "noopener noreferrer";
+          contact.textContent = "Enquire About This Property";
 
-          details.append(
-            tag,
-            title,
-            location,
-            price,
-            description,
-            contact
-          );
+          details.appendChild(tag);
+          details.appendChild(title);
+          details.appendChild(location);
+          details.appendChild(price);
+          details.appendChild(description);
+          details.appendChild(contact);
 
-          card.append(image, details);
+          card.appendChild(details);
           container.appendChild(card);
         });
 
       } catch (error) {
-        message.textContent =
-          "We couldn't load the properties. Please try again later.";
         console.error(error);
+        message.textContent =
+          "We couldn't load properties. Please try again later.";
       }
     }
 
