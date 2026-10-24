@@ -2,141 +2,158 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Mayowa & Co. | Owner Dashboard</title>
-  <meta name="description" content="Manage your property listings on Mayowa & Co.">
-  <style>
-    :root {
-      --green: #14532d;
-      --light: #f4f7f4;
-      --white: #fff;
-      --text: #1f2937;
-      --border: #e5e7eb;
-    }
 
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+  <style>
     * { box-sizing: border-box; }
 
     body {
       margin: 0;
       font-family: Arial, sans-serif;
-      background: var(--light);
-      color: var(--text);
+      background: #f4f7f4;
+      color: #222;
     }
 
     header {
-      background: var(--green);
+      background: #14532d;
       color: white;
-      padding: 22px 18px;
+      padding: 24px 16px;
+      text-align: center;
     }
 
-    header h1 {
-      margin: 0 0 6px;
-      font-size: 23px;
-    }
-
-    header p {
-      margin: 0;
-      font-size: 14px;
-    }
+    header h1 { margin: 0 0 8px; }
 
     main {
-      max-width: 1000px;
-      margin: 28px auto;
+      max-width: 600px;
+      margin: 35px auto;
       padding: 0 16px;
     }
 
-    .panel {
-      background: var(--white);
-      padding: 24px;
+    .card {
+      background: white;
+      padding: 28px 20px;
       border-radius: 12px;
-      border: 1px solid var(--border);
-      margin-bottom: 20px;
+      box-shadow: 0 3px 14px #0000000d;
+      text-align: center;
     }
 
-    h2 { margin-top: 0; }
-
-    .notice {
+    .status {
       padding: 12px;
-      background: #fff7ed;
-      border: 1px solid #fed7aa;
+      margin-top: 20px;
       border-radius: 8px;
-      color: #9a3412;
+      background: #fef3c7;
+      color: #92400e;
       line-height: 1.5;
+      overflow-wrap: anywhere;
     }
 
-    .button {
-      display: inline-block;
-      border: 0;
-      border-radius: 7px;
-      padding: 12px 18px;
-      background: var(--green);
-      color: white;
-      text-decoration: none;
-      cursor: pointer;
-      font-size: 15px;
+    #googleButton {
+      display: flex;
+      justify-content: center;
+      margin: 24px 0;
     }
 
-    .button:disabled {
-      opacity: .6;
-      cursor: not-allowed;
-    }
-
-    .muted {
-      color: #6b7280;
+    .small {
+      font-size: 13px;
+      color: #666;
       line-height: 1.6;
     }
 
     footer {
       text-align: center;
-      padding: 24px 12px;
-      color: #6b7280;
+      padding: 20px;
       font-size: 13px;
+      color: #666;
     }
   </style>
 </head>
+
 <body>
   <header>
     <h1>Mayowa &amp; Co.</h1>
-    <p>Property Owner Dashboard</p>
+    <div>Property Owner Dashboard</div>
   </header>
 
   <main>
-    <section class="panel">
+    <section class="card">
       <h2>Manage Your Properties</h2>
-      <p class="muted">
-        Sign-in and property-management services will be connected here.
-        Property owners will be able to view and manage their own listings
-        once secure authentication is configured.
-      </p>
+      <p>Sign in with Google to begin accessing your owner dashboard.</p>
 
-      <div class="notice" role="status">
-        <strong>Setup in progress</strong><br>
-        Owner sign-in is not active yet. Please do not enter passwords,
-        verification codes, or other private information on this page.
+      <div id="googleButton"></div>
+
+      <div id="status" class="status" role="status">
+        Loading Google sign-in…
       </div>
-    </section>
 
-    <section class="panel">
-      <h2>What you'll be able to do</h2>
-      <ul>
-        <li>View your submitted property listings.</li>
-        <li>Edit property information.</li>
-        <li>Remove your own listings.</li>
-        <li>Check listing status.</li>
-      </ul>
-      <p class="muted">
-        Your existing Mayowa &amp; Co. website and property database remain
-        separate from this dashboard while setup is underway.
+      <p class="small">
+        Your account must be verified before any property information
+        can be accessed or changed.
       </p>
     </section>
   </main>
 
   <footer>
-    &copy; <span id="year"></span> Mayowa &amp; Co. All rights reserved.
+    &copy; <span id="year"></span> Mayowa &amp; Co.
   </footer>
 
   <script>
-    document.getElementById("year").textContent = new Date().getFullYear();
+    const GOOGLE_CLIENT_ID =
+      "205292905246-imt2dkqlitd5iurh0jno456147cvhps1.apps.googleusercontent.com";
+
+    const statusBox = document.getElementById("status");
+
+    document.getElementById("year").textContent =
+      new Date().getFullYear();
+
+    function showStatus(message) {
+      statusBox.textContent = message;
+    }
+
+    function handleGoogleCredential(response) {
+      // Do not save or trust the identity from the browser alone.
+      // A server must verify this token before granting access.
+      showStatus(
+        "Google returned a sign-in token. Secure server verification " +
+        "and owner authorization must be connected before your properties " +
+        "can be displayed or changed."
+      );
+
+      // Do not log or store the credential.
+    }
+
+    window.addEventListener("load", function () {
+      if (!window.google || !google.accounts || !google.accounts.id) {
+        showStatus(
+          "Google sign-in could not load. Check your internet connection " +
+          "and reload this page."
+        );
+        return;
+      }
+
+      google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: handleGoogleCredential
+      });
+
+      google.accounts.id.renderButton(
+        document.getElementById("googleButton"),
+        {
+          theme: "outline",
+          size: "large",
+          shape: "rectangular",
+          text: "signin_with",
+          width: 260
+        }
+      );
+
+      showStatus(
+        "Google sign-in is ready. Property access remains disabled " +
+        "until server-side verification is connected."
+      );
+    });
   </script>
 </body>
 </html>
