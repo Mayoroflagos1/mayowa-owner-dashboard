@@ -12,10 +12,14 @@ input,textarea,select,button{width:100%;padding:12px;margin:7px 0;border:1px sol
 button{background:#17452e;color:white;border:0;cursor:pointer}
 button.secondary{background:#5b6d61}
 button.delete{background:#a12626}
+button:disabled{opacity:.6}
+#preview{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+#preview img{width:100px;height:90px;object-fit:cover;border-radius:6px}
 .property{border:1px solid #ddd;border-radius:8px;padding:14px;margin:12px 0}
-.property img{width:100%;max-height:240px;object-fit:cover;border-radius:6px}
+.property img{width:100%;max-height:260px;object-fit:cover;border-radius:6px}
 .hidden{display:none}
 #message{overflow-wrap:anywhere;font-size:14px}
+.small{font-size:13px;color:#555}
 </style>
 </head>
 <body>
@@ -26,7 +30,7 @@ button.delete{background:#a12626}
 <form id="authForm">
 <input id="email" type="email" placeholder="Email address" required>
 <input id="password" type="password" placeholder="Password (at least 6 characters)" minlength="6" required>
-<button id="authSubmit">Sign In</button>
+<button id="authSubmit" type="submit">Sign In</button>
 </form>
 <button class="secondary" id="toggleAuth" type="button">Create New Account</button>
 <button class="secondary" id="resetPassword" type="button">Forgot Password?</button>
@@ -37,180 +41,224 @@ button.delete{background:#a12626}
 <input id="title" placeholder="Property title" required>
 <select id="type" required>
 <option value="">Choose property type</option>
-<option>Apartment</option>
-<option>Flat</option>
-<option>House</option>
-<option>Duplex</option>
-<option>Land</option>
-<option>Warehouse</option>
-<option>Shop</option>
-<option>Office</option>
-<option>Other</option>
+<option>Apartment</option><option>Flat</option><option>House</option>
+<option>Duplex</option><option>Land</option><option>Warehouse</option>
+<option>Shop</option><option>Office</option><option>Other</option>
 </select>
 <input id="location" placeholder="Property location (e.g. Mushin, Lagos)" required>
 <input id="price" type="number" min="0" placeholder="Price in naira" required>
 <select id="purpose" required>
 <option value="">For sale or rent?</option>
-<option>For Sale</option>
-<option>For Rent</option>
-<option>Short Let</option>
+<option>For Sale</option><option>For Rent</option><option>Short Let</option>
 </select>
-<textarea id="description" placeholder="Property description" rows="4"></textarea>
-<input id="imageUrl" type="url" placeholder="Property image URL (optional)">
-<button id="addProperty" type="submit">Add Property</button>
+<textarea id="description" placeholder="Property description" rows="4"></textarea><label for="images"><strong>Property Photos</strong></label>
+<input id="images" type="file" accept="image/*" multiple>
+
+<p class="small">Choose up to 5 photos. Each photo must be 5 MB or smaller.</p>
+<div id="preview"></div><button id="addProperty" type="submit">Upload Photos & Add Property</button>
+
 </form><h2>My Properties</h2>
-<div id="properties">Loading properties...</div>
-</section>
-<p id="message" role="status" aria-live="polite"></p>
+<div id="properties">Your properties will appear here.</div>
+</section><p id="message" role="status" aria-live="polite"></p>
+<p class="small">Mayowa & Co. Real Estate</p>
 </main><script type="module">
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
 const SUPABASE_URL = "https://pvvsgzaruibqvcskejhc.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_lixabtxRJWc_l4e9bXf01w_iSIDTwVg";
 const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
-
 const $ = id => document.getElementById(id);
+
 let isSignUp = false;
 let currentUser = null;
+let selectedFiles = [];
 
-function message(text, error=false) {
-  $("message").textContent = text;
-  $("message").style.color = error ? "#b00020" : "#17452e";
+function showMessage(text,error=false){
+  $("message").textContent=text;
+  $("message").style.color=error?"#b00020":"#17452e";
 }
 
-function escapeHTML(value) {
-  return String(value ?? "").replace(/[&<>"']/g, c => ({
+function escapeHTML(value){
+  return String(value ?? "").replace(/[&<>"']/g,c=>({
     "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
   }[c]));
 }
 
-function showDashboard(user) {
-  currentUser = user;
+function showDashboard(user){
+  currentUser=user;
   $("auth").classList.add("hidden");
   $("dashboard").classList.remove("hidden");
-  $("signedInAs").textContent = "Signed in as " + user.email;
+  $("signedInAs").textContent="Signed in as "+user.email;
   loadProperties();
 }
 
-function showAuth() {
-  currentUser = null;
+function showAuth(){
+  currentUser=null;
   $("dashboard").classList.add("hidden");
   $("auth").classList.remove("hidden");
 }
 
-$("toggleAuth").addEventListener("click", () => {
-  isSignUp = !isSignUp;
-  $("authTitle").textContent = isSignUp ? "Create Account" : "Sign In";
-  $("authSubmit").textContent = isSignUp ? "Create Account" : "Sign In";
-  $("toggleAuth").textContent = isSignUp ? "Back to Sign In" : "Create New Account";
-  message("");
+$("toggleAuth").addEventListener("click",()=>{
+  isSignUp=!isSignUp;
+  $("authTitle").textContent=isSignUp?"Create Account":"Sign In";
+  $("authSubmit").textContent=isSignUp?"Create Account":"Sign In";
+  $("toggleAuth").textContent=isSignUp?"Back to Sign In":"Create New Account";
+  showMessage("");
 });
 
-$("authForm").addEventListener("submit", async event => {
+$("authForm").addEventListener("submit",async event=>{
   event.preventDefault();
-  $("authSubmit").disabled = true;
-  message("Please wait...");
-
-  const email = $("email").value.trim();
-  const password = $("password").value;
-
-  try {
-    if (isSignUp) {
-      const {data,error} = await supabase.auth.signUp({
+  $("authSubmit").disabled=true;
+  showMessage("Please wait...");
+  try{
+    const email=$("email").value.trim();
+    const password=$("password").value;
+    if(isSignUp){
+      const {data,error}=await supabase.auth.signUp({
         email,password,
         options:{emailRedirectTo:window.location.origin}
       });
-      if(error) throw error;
-      if(data.session && data.user) {
+      if(error)throw error;
+      if(data.session&&data.user){
         showDashboard(data.user);
-        message("Account created successfully.");
-      } else {
-        message("Account created. Check your email to confirm it, then sign in.");
+        showMessage("Account created successfully.");
+      }else{
+        showMessage("Account created. Confirm your email, then sign in.");
       }
-    } else {
-      const {data,error} = await supabase.auth.signInWithPassword({email,password});
-      if(error) throw error;
+    }else{
+      const {data,error}=await supabase.auth.signInWithPassword({email,password});
+      if(error)throw error;
       showDashboard(data.user);
-      message("Signed in successfully.");
+      showMessage("Signed in successfully.");
     }
-  } catch(error) {
-    message(error.message || "Authentication failed.",true);
-  } finally {
-    $("authSubmit").disabled = false;
+  }catch(error){
+    showMessage(error.message||"Sign-in failed.",true);
+  }finally{
+    $("authSubmit").disabled=false;
   }
 });
 
-$("resetPassword").addEventListener("click", async () => {
-  const email = $("email").value.trim();
-  if(!email) return message("Enter your email address first.",true);
-
-  const {error} = await supabase.auth.resetPasswordForEmail(email,{
+$("resetPassword").addEventListener("click",async()=>{
+  const email=$("email").value.trim();
+  if(!email)return showMessage("Enter your email address first.",true);
+  const {error}=await supabase.auth.resetPasswordForEmail(email,{
     redirectTo:window.location.origin
   });
-  message(error ? error.message : "If the account exists, a password reset email will be sent.",!!error);
+  showMessage(error?"Could not send reset email: "+error.message:
+    "If your account exists, a password reset email will be sent.",!!error);
 });
 
-$("logout").addEventListener("click", async () => {
-  const {error} = await supabase.auth.signOut();
-  if(error) return message(error.message,true);
+$("logout").addEventListener("click",async()=>{
+  const {error}=await supabase.auth.signOut();
+  if(error)return showMessage(error.message,true);
   showAuth();
-  message("Signed out.");
+  showMessage("Signed out.");
 });
 
-$("propertyForm").addEventListener("submit", async event => {
+$("images").addEventListener("change",()=>{
+  selectedFiles=Array.from($("images").files||[]);
+  $("preview").replaceChildren();
+
+  if(selectedFiles.length>5){
+    selectedFiles=[];
+    $("images").value="";
+    $("preview").replaceChildren();
+    return showMessage("Choose no more than 5 photos.",true);
+  }
+
+  for(const file of selectedFiles){
+    if(!file.type.startsWith("image/")||file.size>5*1024*1024){
+      selectedFiles=[];
+      $("images").value="";
+      $("preview").replaceChildren();
+      return showMessage("Use image files that are 5 MB or smaller.",true);
+    }
+  }
+
+  for(const file of selectedFiles){
+    const img=document.createElement("img");
+    img.alt="Photo preview";
+    img.src=URL.createObjectURL(file);
+    $("preview").appendChild(img);
+  }
+  showMessage(selectedFiles.length+" photo(s) selected.");
+});
+
+async function uploadPhotos(files){
+  const urls=[];
+  for(const file of files){
+    const safeName=file.name.replace(/[^a-zA-Z0-9._-]/g,"_");
+    const path=currentUser.id+"/"+crypto.randomUUID()+"-"+safeName;
+
+    const {error}=await supabase.storage
+      .from("property-images")
+      .upload(path,file,{contentType:file.type,upsert:false});
+
+    if(error)throw error;
+
+    const {data}=supabase.storage.from("property-images").getPublicUrl(path);
+    urls.push(data.publicUrl);
+  }
+  return urls;
+}
+
+$("propertyForm").addEventListener("submit",async event=>{
   event.preventDefault();
-  if(!currentUser) return message("Please sign in first.",true);
+  if(!currentUser)return showMessage("Please sign in first.",true);
 
-  $("addProperty").disabled = true;
-  message("Saving property...");
+  $("addProperty").disabled=true;
+  const uploadedUrls=[];
 
-  const property = {
-    owner_id: currentUser.id,
-    title: $("title").value.trim(),
-    property_type: $("type").value,
-    location: $("location").value.trim(),
-    price: Number($("price").value),
-    listing_purpose: $("purpose").value,
-    description: $("description").value.trim() || null,
-    image_url: $("imageUrl").value.trim() || null,
-    status: "pending"
-  };
+  try{
+    showMessage("Uploading photos...");
+    const urls=await uploadPhotos(selectedFiles);
+    uploadedUrls.push(...urls);
 
-  try {
-    const {error} = await supabase.from("properties").insert(property);
-    if(error) throw error;
+    const property={
+      owner_id:currentUser.id,
+      title:$("title").value.trim(),
+      property_type:$("type").value,
+      location:$("location").value.trim(),
+      price:Number($("price").value),
+      listing_purpose:$("purpose").value,
+      description:$("description").value.trim()||null,
+      image_url:urls[0]||null,
+      status:"pending"
+    };
+
+    showMessage("Saving property...");
+    const {error}=await supabase.from("properties").insert(property);
+    if(error)throw error;
+
     $("propertyForm").reset();
-    message("Property saved! It is marked pending and is not automatically published on your public website.");
+    $("preview").replaceChildren();
+    selectedFiles=[];
+    showMessage("Property saved successfully. Status: Pending.");
     await loadProperties();
-  } catch(error) {
-    message("Could not save property: " + error.message,true);
-  } finally {
-    $("addProperty").disabled = false;
+  }catch(error){
+    showMessage("Could not save property: "+error.message,true);
+  }finally{
+    $("addProperty").disabled=false;
   }
 });
 
-async function loadProperties() {
-  if(!currentUser) return;
-
-  $("properties").textContent = "Loading properties...";
-
-  try {
-    const {data,error} = await supabase
-      .from("properties")
-      .select("*")
-      .eq("owner_id",currentUser.id)
+async function loadProperties(){
+  if(!currentUser)return;
+  $("properties").textContent="Loading properties...";
+  try{
+    const {data,error}=await supabase.from("properties")
+      .select("*").eq("owner_id",currentUser.id)
       .order("created_at",{ascending:false});
+    if(error)throw error;
 
-    if(error) throw error;
-
-    if(!data.length) {
-      $("properties").textContent = "You have not added any properties yet.";
+    if(!data.length){
+      $("properties").textContent="You have not added any properties yet.";
       return;
     }
 
-    $("properties").innerHTML = data.map(p => `
+    $("properties").innerHTML=data.map(p=>`
       <article class="property">
-        ${p.image_url ? `<img src="${escapeHTML(p.image_url)}" alt="Property image" loading="lazy" onerror="this.style.display='none'">` : ""}
+        ${p.image_url?`<img src="${escapeHTML(p.image_url)}" alt="Property photo" loading="lazy">`:""}
         <h3>${escapeHTML(p.title)}</h3>
         <p><strong>Type:</strong> ${escapeHTML(p.property_type)}</p>
         <p><strong>Location:</strong> ${escapeHTML(p.location)}</p>
@@ -219,35 +267,30 @@ async function loadProperties() {
         <p>${escapeHTML(p.description)}</p>
         <p><strong>Status:</strong> ${escapeHTML(p.status)}</p>
         <button class="delete" data-delete="${Number(p.id)}" type="button">Delete Property</button>
-      </article>
-    `).join("");
+      </article>`).join("");
 
-    $("properties").querySelectorAll("[data-delete]").forEach(button => {
-      button.addEventListener("click", async () => {
-        if(!confirm("Are you sure you want to delete this property?")) return;
-
-        const id = Number(button.dataset.delete);
-        const {error} = await supabase.from("properties")
-          .delete()
-          .eq("id",id)
+    $("properties").querySelectorAll("[data-delete]").forEach(button=>{
+      button.addEventListener("click",async()=>{
+        if(!confirm("Delete this property?"))return;
+        const {error}=await supabase.from("properties").delete()
+          .eq("id",Number(button.dataset.delete))
           .eq("owner_id",currentUser.id);
-
-        if(error) return message("Could not delete property: " + error.message,true);
-        message("Property deleted.");
+        if(error)return showMessage(error.message,true);
+        showMessage("Property deleted.");
         loadProperties();
       });
     });
-  } catch(error) {
-    $("properties").textContent = "Could not load properties.";
-    message("Database error: " + error.message,true);
+  }catch(error){
+    $("properties").textContent="Could not load properties.";
+    showMessage("Database error: "+error.message,true);
   }
 }
 
-const {data:{session}} = await supabase.auth.getSession();
-if(session?.user) showDashboard(session.user);
+const {data:{session}}=await supabase.auth.getSession();
+if(session?.user)showDashboard(session.user);
 
-supabase.auth.onAuthStateChange((_event,session) => {
-  if(session?.user) showDashboard(session.user);
+supabase.auth.onAuthStateChange((_event,session)=>{
+  if(session?.user)showDashboard(session.user);
   else showAuth();
 });
 </script></body>
