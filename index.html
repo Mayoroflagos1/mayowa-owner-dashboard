@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Mayowa & Co. Owner Dashboard</title>
+<title>Mayowa &amp; Co. Owner Dashboard</title>
 
 <style>
 *{box-sizing:border-box}
 body{font-family:Arial,sans-serif;background:#f3f6f4;margin:0;padding:16px;color:#222}
-.container{max-width:850px;margin:25px auto;background:white;padding:22px;border-radius:12px;box-shadow:0 3px 15px #0001}
+.container{max-width:1000px;margin:25px auto;background:white;padding:22px;border-radius:12px;box-shadow:0 3px 15px #0001}
 h1,h2,h3{color:#17452e}
 input,textarea,select,button{width:100%;padding:12px;margin:7px 0;border:1px solid #ccc;border-radius:6px;font-size:16px}
 button{background:#17452e;color:white;border:0;cursor:pointer}
@@ -33,6 +33,45 @@ button:disabled{opacity:.6;cursor:wait}
 .row{display:flex;gap:10px;flex-wrap:wrap}
 .row button{flex:1;min-width:120px}
 .whatsapp-note{background:#effaf1;padding:10px;border-radius:6px;font-size:13px}
+
+/* Analytics dashboard */
+.analytics-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:12px;
+  margin:15px 0 25px
+}
+.analytics-card{
+  background:#f3f8f4;
+  border:1px solid #d8e7dc;
+  border-radius:10px;
+  padding:18px 12px;
+  text-align:center
+}
+.analytics-card span{
+  display:block;
+  font-size:13px;
+  color:#526257;
+  margin-bottom:10px
+}
+.analytics-card strong{
+  display:block;
+  font-size:27px;
+  color:#17452e;
+  overflow-wrap:anywhere
+}
+.top-viewed-item{
+  border:1px solid #ddd;
+  padding:12px;
+  border-radius:8px;
+  margin:8px 0;
+  background:#fff
+}
+.top-viewed-item strong{color:#17452e}
+.analytics-status{font-size:13px;color:#555}
+@media(min-width:600px){
+  .analytics-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
 </style>
 </head>
 
@@ -61,7 +100,48 @@ button:disabled{opacity:.6;cursor:wait}
 <section id="adminPanel" class="adminbox hidden">
 <h2>Admin Panel — Review Properties</h2>
 <p class="small">Review submissions, approve listings, verify properties, and select featured listings.</p>
-<button id="refreshAdmin" type="button">Refresh Submissions</button>
+
+<button id="refreshAdmin" type="button">Refresh Dashboard &amp; Submissions</button>
+
+<h2>📊 Business Analytics</h2>
+<p class="analytics-status">Statistics are calculated from property records available to your administrator account.</p>
+
+<div id="analyticsDashboard" class="analytics-grid">
+  <div class="analytics-card">
+    <span>Total Properties</span>
+    <strong id="totalProperties">—</strong>
+  </div>
+
+  <div class="analytics-card">
+    <span>Approved Properties</span>
+    <strong id="approvedProperties">—</strong>
+  </div>
+
+  <div class="analytics-card">
+    <span>Pending Approvals</span>
+    <strong id="pendingProperties">—</strong>
+  </div>
+
+  <div class="analytics-card">
+    <span>Total Views</span>
+    <strong id="totalViews">—</strong>
+  </div>
+
+  <div class="analytics-card">
+    <span>Featured Properties</span>
+    <strong id="featuredProperties">—</strong>
+  </div>
+
+  <div class="analytics-card">
+    <span>Verified Properties</span>
+    <strong id="verifiedProperties">—</strong>
+  </div>
+</div>
+
+<h3>📈 Five Most-Viewed Properties</h3>
+<div id="topViewedProperties">Analytics will appear after loading.</div>
+
+<h2>Property Submissions</h2>
 <div id="adminProperties">Checking administrator access...</div>
 </section>
 
@@ -420,6 +500,45 @@ $("propertyForm").addEventListener("submit", async event => {
   }
 });
 
+/* Analytics: calculate counts and rank properties by view count. */
+function updateAnalytics(properties) {
+  const all = properties || [];
+
+  const approved = all.filter(p => p.status === "approved");
+  const pending = all.filter(p => p.status === "pending");
+  const featured = all.filter(p => p.is_featured === true);
+  const verified = all.filter(p => p.is_verified === true);
+
+  const totalViews = all.reduce(
+    (sum, p) => sum + Math.max(0, Number(p.view_count) || 0),
+    0
+  );
+
+  $("totalProperties").textContent = all.length.toLocaleString("en-NG");
+  $("approvedProperties").textContent = approved.length.toLocaleString("en-NG");
+  $("pendingProperties").textContent = pending.length.toLocaleString("en-NG");
+  $("totalViews").textContent = totalViews.toLocaleString("en-NG");
+  $("featuredProperties").textContent = featured.length.toLocaleString("en-NG");
+  $("verifiedProperties").textContent = verified.length.toLocaleString("en-NG");
+
+  const mostViewed = [...all]
+    .sort((a, b) => (Number(b.view_count) || 0) - (Number(a.view_count) || 0))
+    .slice(0, 5);
+
+  if (mostViewed.length === 0) {
+    $("topViewedProperties").textContent = "No properties available yet.";
+    return;
+  }
+
+  $("topViewedProperties").innerHTML = mostViewed.map((p, index) => `
+    <div class="top-viewed-item">
+      <strong>${index + 1}. ${escapeHTML(p.title || "Untitled property")}</strong>
+      <p>${escapeHTML(p.location || "Location unavailable")}</p>
+      <p>👁 ${(Number(p.view_count) || 0).toLocaleString("en-NG")} views</p>
+    </div>
+  `).join("");
+}
+
 /* Property card: includes view count and admin featured controls. */
 function propertyCard(p, adminMode = false) {
   const status = String(p.status || "pending").toLowerCase();
@@ -441,7 +560,7 @@ function propertyCard(p, adminMode = false) {
       <p><strong>Purpose:</strong> ${escapeHTML(p.listing_purpose)}</p>
       <p><strong>Description:</strong> ${escapeHTML(p.description || "No description provided.")}</p>
       <p><strong>WhatsApp:</strong> ${waNumber ? escapeHTML(waNumber) : "Not provided"}</p>
-      <p><strong>Property Views:</strong> ${views}</p>
+      <p><strong>Property Views:</strong> ${views.toLocaleString("en-NG")}</p>
       <p><strong>Featured:</strong> ${featured
         ? '<span class="badge featured">⭐ Featured</span>'
         : "No"}</p>
@@ -479,7 +598,7 @@ function propertyCard(p, adminMode = false) {
             <button class="approve"
               data-status-id="${id}"
               data-new-status="approved"
-              type="button">Approve & Publish</button>
+              type="button">Approve &amp; Publish</button>
           ` : ""}
 
           ${status !== "rejected" ? `
@@ -568,6 +687,9 @@ async function loadAdminProperties() {
       .order("created_at", { ascending: false });
 
     if (error) throw error;
+
+    /* Refresh analytics using the property records retrieved for the admin. */
+    updateAnalytics(data || []);
 
     if (!data || !data.length) {
       $("adminProperties").textContent = "No property submissions found.";
@@ -705,7 +827,11 @@ async function loadAdminProperties() {
   }
 }
 
-$("refreshAdmin").addEventListener("click", loadAdminProperties);
+$("refreshAdmin").addEventListener("click", async () => {
+  showMessage("Refreshing dashboard...");
+  await loadAdminProperties();
+  showMessage("Dashboard refreshed.");
+});
 
 const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
